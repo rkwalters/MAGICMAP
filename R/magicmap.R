@@ -736,11 +736,15 @@ plot.magicmap <- function(model, which_plot=NULL, class_thresh=0.95, label_comp=
   }
   
   if(is.null(colors)){
-    if(k > 7){
-      stop(paste("Selected model has",k,"components, but there are only default colors for 7. Please specify colors."))
+    if(k > 14){
+      stop(paste("Selected model has",k,"components, but there are only default colors for 14. Please specify colors."))
     }
-    # colorbrewer dark2
-    colors <- c("#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02","#a6761d")
+    if(!requireNamespace("RColorBrewer", quietly = TRUE)) {
+      colors <- c("#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02","#a6761d",
+                  "#66c2a5","#fc8d62","#8da0cb","#e78ac3","#a6d854","#ffd92f","#e5c494")
+    }else{
+      colors <- c(RColorBrewer::brewer.pal(7,"Dark2"), RColorBrewer::brewer.pal(7,"Set2"))
+    }
     colors <- c(colors[1:k],"#666666")
   }
   
