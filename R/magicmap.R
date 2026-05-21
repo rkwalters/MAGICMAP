@@ -75,109 +75,114 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
   
     # convergence and warning flags
     em_converge <- F
-    em_dec <- NA
-    empty_comp <- F
-    york_converge <- F
-    york_dec <- NA
-    iter <- 0
-    y_iter <- 0
+    # =========================================================================
+    # BEGIN SQUAREM INTEGRATION
+    # =========================================================================
     
-    # begin EM
-    while(!em_converge && iter < maxIterations){
+    # 1. Define the Objective Function (Calculates the Marginal Log-Likelihood)
+    em_objective <- function(theta, data, k_comps, ...) {
+      b_curr <- theta[1:k_comps]
+      p_curr <- theta[(k_comps+1):(2*k_comps)]
+      x_curr <- theta[(2*k_comps+1):length(theta)]
+      return(ll_comp_func(data, b_curr, p_curr, x_curr))
+    }
+    
+    # 2. Define the Fixed-Point Function
+    em_fixed_point <- function(theta, data, k_comps, est_method, inn_tol, max_it, ...) {
       
-      iter <- iter+1
+      # Unpack parameters
+      b_curr <- theta[1:k_comps]
+      p_curr <- theta[(k_comps+1):(2*k_comps)]
+      x_curr <- theta[(2*k_comps+1):length(theta)]
       
-      # E step
-      post_est <- estep_posteriors(dat, b_est, p_est, x_est)
-      ll_Q_old <- sum(Q_loglik_matrix(dat, b_est, p_est, x_est, post_est))
-      # if(verbose){
-      #   print(paste("Ex ll:",llm_old))
-      # }
+      # --- E STEP ---
+      post_curr <- estep_posteriors(data, b_curr, p_curr, x_curr)
       
-      # M step
-      p_est <- colMeans(post_est)
+      # --- M STEP ---
+      p_new <- colMeans(post_curr)
       
-      # fail out if estimating an empty component
-      if(any(p_est==0)){
-        empty_comp <- T
-        break
+      # Prevent hard zeroes which crash the likelihood
+      if(any(p_new == 0)) {
+        p_new <- pmax(p_new, 1e-10)
+        p_new <- p_new / sum(p_new)
       }
       
-      if(estimator=="numeric"){
-        york_converge <- F
-        par <- optim(c(b_est, x_est), 
-                     fn=mstep_optim_func, 
-                     gr=mstep_gradient_func,
-                     data=dat,
-                     priorp=p_est, 
-                     postp=post_est,
-                     method="BFGS",
-                     control=list(fnscale=-1, maxit=maxIterations, reltol=InnerTolerance))
-        
-        if(par$convergence==0){
-          york_converge <- T
-        }
-  
-        b_est <- par$par[1:k]
-        x_est <- par$par[(k+1):(nrow(dat)+k)]
-        
-      }else{
+      b_new <- b_curr
+      x_new <- x_curr
       
-        # setup for york internal iterations
+      # Execute your existing M-Step estimators (The York Regression)
+      if(est_method == "numeric") {
+        par <- optim(c(b_curr, x_curr), 
+                     fn=mstep_optim_func, gr=mstep_gradient_func,
+                     data=data, priorp=pmax(p_new, 1e-16), postp=post_curr, method="BFGS",
+                     control=list(fnscale=-1, maxit=max_it, reltol=inn_tol))
+        b_new <- par$par[1:k_comps]
+        x_new <- par$par[(k_comps+1):(nrow(data)+k_comps)]
+        
+      } else {
+        # Internal York iterations
         ll_Q_y_old <- -Inf
-        york_converge <- F
-        while(!york_converge && y_iter < maxIterations){
+        york_converge_inner <- F
+        y_iter <- 0
+        
+        while(!york_converge_inner && y_iter < max_it) {
+          y_iter <- y_iter + 1
           
-          if(estimator=="MLE"){
-            b_est <- slope_est_func(dat, b_est, x_est, post_est)
-          }else if(estimator=="alt_MLE"){
-            b_est <- slope_est_func2(dat, b_est, post_est)
-          }
-    
-          x_est <- xpred_est_func(dat, b_est, post_est)
-          
-          ll_Q_y_new <- sum(Q_loglik_matrix(dat, b_est, p_est, x_est, post_est))
-          if(verbose>1){
-            print(paste("York ll:", ll_Q_y_new))
+          if(est_method == "MLE") {
+            b_new <- slope_est_func(data, b_new, x_new, post_curr)
+          } else if(est_method == "alt_MLE") {
+            b_new <- slope_est_func2(data, b_new, post_curr)
           }
           
-          if((ll_Q_y_new - ll_Q_y_old)/ll_Q_y_new < InnerTolerance){
-            if(ll_Q_y_new - ll_Q_y_old < 0){
-              if(verbose){
-                warning(paste("loglik decreased in inner loop by",ll_Q_y_old-ll_Q_y_new))
-              }
-              if(is.na(york_dec) || ll_Q_y_new - ll_Q_y_old < york_dec){
-                york_dec <- ll_Q_y_old - ll_Q_y_new
-              }
-            }
-            york_converge <- T
-          }else{
+          x_new <- xpred_est_func(data, b_new, post_curr)
+          ll_Q_y_new <- sum(Q_loglik_matrix(data, b_new, p_new, x_new, post_curr))
+          
+          # Check inner York convergence
+          if(abs((ll_Q_y_new - ll_Q_y_old) / ll_Q_y_new) < inn_tol) {
+            york_converge_inner <- T
+          } else {
             ll_Q_y_old <- ll_Q_y_new
           }
         }
       }
       
-      # check convergence
-      ll_Q_new <- sum(Q_loglik_matrix(dat, b_est, p_est, x_est, post_est))
-      
-      if((ll_Q_new - ll_Q_old)/ll_Q_new < EMTolerance){
-        if(ll_Q_new - ll_Q_old < 0){
-          if(verbose){
-            warning(paste("loglik decreased at last step by",ll_Q_old-ll_Q_new))
-          }
-          em_dec <- ll_Q_old - ll_Q_new
-        }
-        em_converge <- T
-      }
-      
-      ll_comp <- ll_comp_func(dat, b_est, p_est, x_est)
-      if(verbose){
-        print(paste("iteration",iter,"EM loglik:",ll_comp))
-      }
-  
+      # Repack and return updated parameters to SQUAREM
+      return(c(b_new, p_new, x_new))
     }
+    
+    # 3. Bundle initial parameters and run SQUAREM accelerator
+    theta_init <- c(b_est, p_est, x_est)
+    
+    sq_fit <- SQUAREM::squarem(
+      par = theta_init, 
+      fixptfn = em_fixed_point, 
+      objfn = em_objective,
+      control = list(tol = EMTolerance, maxiter = maxIterations, trace = verbose, minimize = FALSE),
+      # Arguments passed down to the fixpt and obj functions:
+      data = dat, k_comps = k, est_method = estimator, inn_tol = InnerTolerance, max_it = maxIterations
+    )
+    
+    # 4. Unpack the final, accelerated parameters back into your script's variables
+    b_est <- sq_fit$par[1:k]
+    p_est <- sq_fit$par[(k+1):(2*k)]
+    x_est <- sq_fit$par[(2*k+1):length(sq_fit$par)]
+    
+    # Run the E-step one final time with the optimized parameters so post_est is ready for output
+    post_est <- estep_posteriors(dat, b_est, p_est, x_est)
+    ll_comp <- sq_fit$value.objfn
+    iter <- sq_fit$fpevals # Number of times the fixed-point function (EM cycle) was evaluated
+    
+    # Check if SQUAREM hit the tolerance or maxed out iterations
+    # Set convergence flags expected by the rest of the script
+    empty_comp <- any(p_est < 1e-8)
+    em_converge <- sq_fit$convergence
+    em_dec <- NA     
+    york_dec <- NA
+    
+    # =========================================================================
+    # END SQUAREM INTEGRATION
+    # =========================================================================
   }
-  
   # model df for k-1 priors and k slopes
   df <- 2*k-1
   
@@ -197,8 +202,45 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
   colnames(post_est) <- paste0("ProbClass",1:k)
   rownames(post_est) <- rownames(data)
   posteriors <- cbind(data,post_est)
+    
+  # Genimi code, passed initial inspection
+  # =================================================================
+  # BEGIN PER-COMPONENT METRICS (D2)
+  # =================================================================
+  raw_mahalanobis_d2 <- vector("list", k)
+
+  if (!empty_comp) {
+    # 2. Pre-calculate the inverse covariance matrix elements for ALL SNPs
+    # This vectorizes the math so we don't need slow loops!
+    det_Sigma <- dat$sx^2 * dat$sy^2 - (dat$re * dat$sx * dat$sy)^2
+    inv_11 <- dat$sy^2 / det_Sigma
+    inv_22 <- dat$sx^2 / det_Sigma
+    inv_12 <- -(dat$re * dat$sx * dat$sy) / det_Sigma
+
+    for(c in 1:k) {
+      # 3. Calculate D^2 for ALL variants relative to this component's specific line
+      resid_x <- dat$x - x_est
+      resid_y <- dat$y - (b_est[c] * x_est)
+
+      # The Mahalanobis quadratic form
+      d2_all <- (resid_x^2 * inv_11) + (resid_y^2 * inv_22) + (2 * resid_x * resid_y * inv_12)
+      
+      # Save the raw vector into the list
+      raw_mahalanobis_d2[[c]] <- d2_all
+    }
+  }
+
+  # Build the comprehensive parameters dataframe with placeholders for the post-hoc SEs
+  parameters <- data.frame(
+    b = b_est, 
+    se = NA
+  )
   
-  parameters <- data.frame(b=b_est, se=NA)
+  # Attach the raw D2 list as a list-column (data.frames don't like lists in the init function)
+  parameters$raw_mahalanobis_d2 <- raw_mahalanobis_d2
+  
+  # End Gemini code
+  # =================================================================
   
   notes <- ""
   
@@ -381,7 +423,6 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #' @export 
 #'
 
-
 magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparatorY, k, ids = NULL, CovIntercept = 0, TargetXIntercept=1, ComparatorYIntercept=1, inflateSEs=FALSE, estimator="MLE", maxIterations=1000, EMTolerance=1e-12, InnerTolerance=1e-12, verbose=FALSE){
 
   # sanity checks
@@ -465,6 +506,67 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
   names(slopes) <- paste0("mix",k,"components")
   names(xpreds) <- paste0("mix",k,"components")
   names(posts) <- paste0("mix",k,"components")
+
+  # Gemini code, past initial inspection. I haven't verified the math yet
+  # =================================================================
+  # POST-HOC STANDARD ERROR CALCULATION (Lowest BIC Model Only)
+  # =================================================================
+    # 1. Identify the "winning" model based on lowest BIC
+    best_i <- which.min(fits$BIC)
+    best_k <- fits$k_components[best_i]
+    print(paste0("Calculating SE for the model with ", best_k, " components"))
+    
+    # Only calculate if the winning model actually converged
+    if (!is.na(fits$converged[best_i]) && fits$converged[best_i] && best_k > 0) {
+      
+      # 2. Extract the converged parameters for this specific model
+      b_best <- slopes[[best_i]]$b
+      x_best <- xpreds[[best_i]]
+      p_best <- priors[[best_i]]
+      # Extract just the probability columns and convert to matrix
+      post_best <- as.matrix(posts[[best_i]][, -c(1:4)]) 
+      
+      # Recreate the formatted data for the gradient function
+      dat_hess <- data
+      colnames(dat_hess) <- c("x","sx","y","sy")
+      dat_hess$re <- rep(re, nrow(dat_hess))
+      
+      # 3. Calculate the Hessian
+      theta_hat <- c(b_best, x_best)
+      n_obs <- nrow(dat_hess)
+      
+      H_start_time <- Sys.time()
+      H_full <- numDeriv::jacobian(func = mstep_gradient_func, 
+                                   x = theta_hat, 
+                                   data = dat_hess, 
+                                   priorp = pmax(p_best, 1e-16), 
+                                   postp = post_best)
+      
+      # 4. Schur Complement
+      H_bb <- H_full[1:best_k, 1:best_k, drop=FALSE]
+      H_xx_diag <- diag(H_full[(best_k+1):(n_obs+best_k), (best_k+1):(n_obs+best_k)])
+      H_bx <- H_full[1:best_k, (best_k+1):(n_obs+best_k), drop=FALSE]
+      H_xb <- H_full[(best_k+1):(n_obs+best_k), 1:best_k, drop=FALSE]
+      
+      penalty_term <- H_bx %*% (H_xb / H_xx_diag)
+      info_matrix_b <- -H_bb + penalty_term
+      
+      # 5. Invert and assign
+      tryCatch({
+        cov_b <- solve(info_matrix_b)
+        se_best <- sqrt(diag(cov_b))
+        
+        # Overwrite the NAs in the slopes list for the winning model!
+        slopes[[best_i]]$se <- se_best          
+      }, error = function(e) {
+        # Printing the actual error message 'e' helps debug typos vs. actual singular matrices!
+        warning(paste("Error calculating SE for best model (k=", best_k, "): ", e$message, sep=""))
+      })
+      H_end_time <- Sys.time()
+      print(paste0('Calculation of the variance-covariance matrix took ',as.numeric(H_end_time - H_start_time, units = "secs"), ' secs.'))
+    }
+  # End Gemini code
+  # =================================================================
   
   out <- list(
     scoutjoy_test=scout$`Global Test`,
@@ -527,11 +629,10 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
 #' @export
 #'
 
-plot.magicmap <- function(model, which_plot=NULL, class_thresh=0.95, label_comp=NULL, colors=NULL, se_bars=TRUE, legend=TRUE, comp_names=NULL, se_length=0.025, ...){
-  
+plot.magicmap <- function(model, which_plot=NULL, class_thresh=0.95, label_comp=NULL, colors=NULL, se_bars=TRUE, legend=TRUE, comp_names=NULL, se_length=0.025, conf_region=TRUE, ...){  
   args <- list(...)
   
-  conf_region=FALSE # plotting code available, but not currently part of magicmap estimation
+  #conf_region=FALSE # plotting code available, but not currently part of magicmap estimation
   
   if(nrow(model$fit_stats)==1){
     
@@ -685,41 +786,46 @@ plot.magicmap <- function(model, which_plot=NULL, class_thresh=0.95, label_comp=
   if(conf_region){
     for(i in 1:k){
       
-      if(min(x-sx)<0){
-        polygon(x=c(
-          0,
-          min(x-sx), 
-          min(x-sx),
-          0,
-          max(x+sx), 
-          max(x+sx)
-        ),
-        y=c(
-          0,
-          min(x-sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i]),# -qnorm(.025,lower=F)*mean(sy), 
-          min(x-sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]),# +qnorm(.025,lower=F)*mean(sy), 
-          0,
-          max(x+sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]),# +qnorm(.025,lower=F)*mean(sy), 
-          max(x+sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i])# -qnorm(.025,lower=F)*mean(sy)
-        ),
-        border=FALSE,
-        col=adjustcolor(colors[i], alpha.f=0.3))
-      }else{
-        polygon(x=c(
-          min(x-sx), 
-          min(x-sx),
-          max(x+sx), 
-          max(x+sx)
-        ),
-        y=c(
-          min(x-sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i]),# -qnorm(.025,lower=F)*mean(sy), 
-          min(x-sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]),# +qnorm(.025,lower=F)*mean(sy), 
-          max(x+sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]),# +qnorm(.025,lower=F)*mean(sy), 
-          max(x+sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i])# -qnorm(.025,lower=F)*mean(sy)
-        ),
-        border=FALSE,
-        col=adjustcolor(colors[i], alpha.f=0.3))
-      }
+      # ---> SAFETY CHECK <---
+      if(!is.na(slopese[i])) {
+        
+        if(min(x-sx)<0){
+          polygon(x=c(
+            0,
+            min(x-sx), 
+            min(x-sx),
+            0,
+            max(x+sx), 
+            max(x+sx)
+          ),
+          y=c(
+            0,
+            min(x-sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i]), 
+            min(x-sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            0,
+            max(x+sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            max(x+sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i])
+          ),
+          border=FALSE,
+          col=adjustcolor(colors[i], alpha.f=0.3))
+        }else{
+          polygon(x=c(
+            min(x-sx), 
+            min(x-sx),
+            max(x+sx), 
+            max(x+sx)
+          ),
+          y=c(
+            min(x-sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i]), 
+            min(x-sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            max(x+sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            max(x+sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i])
+          ),
+          border=FALSE,
+          col=adjustcolor(colors[i], alpha.f=0.3))
+        }
+        
+      } # ---> CLOSE THE SAFETY CHECK <---
     }
   }
   

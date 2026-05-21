@@ -14,6 +14,7 @@
   legend = TRUE,
   comp_names = NULL,
   se_length = 0.025,
+  conf_region = TRUE,
   ...
 )
 }

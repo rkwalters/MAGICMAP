@@ -1,6 +1,6 @@
 Package: MAGICMAP
 Title: MAGICMAP: Mixtures Aggregating Genes Into Coordinated Modules And Pathways
-Version: 0.1.2
+Version: 0.1.2.9000
 Authors@R: c(
     person("Amanda", "Elliott", email = "aelliott@broadinstitute.org", role = c("aut")), 
     person("Ran", "Cui", role=c("ctb")),
@@ -14,7 +14,11 @@ Imports:
     mvtnorm,
     Ckmeans.1d.dp,
     SCOUTJOY,
-    yorktools
+    yorktools,
+    SQUAREM,
+    goftest,
+    magrittr,
+    dplyr
 Remotes:
     github::aelliott08/SCOUTJOY,
     github::rkwalters/yorktools
