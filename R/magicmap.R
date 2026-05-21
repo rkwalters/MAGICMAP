@@ -350,6 +350,9 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #' 
 #' @param ComparatorYIntercept
 #' Intercept from LDSC heritability analysis of the comparator (y axis) trait. Default = 1, which assumes no population stratification or other confounding.
+#'
+#' @param forceAllK
+#' Logical, whether to continue estimating the model for all values in k even if components appear to collapse at a lower value. Default false.
 #' 
 #' @param inflateSEs
 #' Logical, whether to apply LSDC h2 intercept adjustment to the input standard errors. By default, input SEs are used as given.
@@ -423,7 +426,7 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #' @export 
 #'
 
-magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparatorY, k, ids = NULL, CovIntercept = 0, TargetXIntercept=1, ComparatorYIntercept=1, inflateSEs=FALSE, estimator="MLE", maxIterations=1000, EMTolerance=1e-12, InnerTolerance=1e-12, verbose=FALSE){
+magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparatorY, k, ids = NULL, CovIntercept = 0, TargetXIntercept=1, ComparatorYIntercept=1, forceAllK=FALSE, inflateSEs=FALSE, estimator="MLE", maxIterations=1000, EMTolerance=1e-12, InnerTolerance=1e-12, verbose=FALSE){
 
   # sanity checks
   if((length(betaTargetX)!=1) || (length(sdTargetX)!=1) || (length(betaComparatorY)!=1) || (length(sdComparatorY)!=1)){
@@ -438,6 +441,7 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
     stop("estimator must be one of \'MLE\', \'alt_MLE\', or \'numeric\'.")
   }
   
+  k <- sort(k)
   
   # format data
   if(!is.null(ids)){
@@ -491,12 +495,16 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
     posts[[i]] <- mod$posteriors
     
     if(any(grepl("Slopes not well differentiated",mod$fit_stats$notes))){
-      stop_k_too_high <- T
-      if(i < length(k)){
-        k <- k[1:i]
-        warning(paste0("Components collapsed at k=",k[i],"; skipping remaining k values"))
+      if(forceAllK){
+        warning(paste0("Components collapsed at k=",k[i]"))
+      }else{
+        stop_k_too_high <- T
+        if(i < length(k)){
+          k <- k[1:i]
+          warning(paste0("Components collapsed at k=",k[i],"; skipping remaining k values. Set forceAllK=TRUE to avoid this behavior."))
+        }
+        break
       }
-      break
     }
     
         
