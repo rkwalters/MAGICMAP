@@ -18,7 +18,8 @@ Imports:
     SQUAREM,
     goftest,
     magrittr,
-    dplyr
+    dplyr,
+    rlang
 Remotes:
     github::aelliott08/SCOUTJOY,
     github::rkwalters/yorktools

@@ -327,13 +327,13 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #' @param betaTargetX 
 #' String, giving the column name in \code{data} for the effect sizes (betas) on the target (x-axis) trait
 #' 
-#' @param sdTargetX, 
+#' @param sdTargetX 
 #' String, giving the column name in \code{data} for the standard error (se) of the effect sizes on the target (x-axis) trait
 #' 
 #' @param betaComparatorY
 #' String, giving the column name in \code{data} for the effect sizes (betas) on the comparator (y-axis) trait
 
-#' @param sdComparatorY,
+#' @param sdComparatorY
 #' String, giving the column name in \code{data} for the standard error (se) of the effect sizes on the comparator (y-axis) trait
 #' 
 #' @param k
@@ -410,6 +410,9 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #'   \item{\code{posteriors}}{
 #'     Data frame containing the original input data (i.e. the X effect size, X standard error, Y effect size, and Y standard error) and the estimated posterior probability of the observations being a member of each of the \code{k} mixture components.
 #'   }
+#'
+#'   \item{\code{call}}{
+#'     Call object containing all arguments used 
 #'   
 #'
 #' }
@@ -576,13 +579,22 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
   # End Gemini code
   # =================================================================
   
+  # record call
+  call_obj <- rlang::call_match(defaults=TRUE)
+  fn <- call_obj[[1]]
+  data_name <- call_obj$data
+  args <- call_obj$data[-1]
+  arg_vals <- sapply(args[-1], eval.parent)
+  clean_call <- as.call(c(fn, data_name, arg_vals))
+
   out <- list(
     scoutjoy_test=scout$`Global Test`,
     fit_stats = fits,
     component_proportions = priors,
     slopes = slopes,
     predicted_target_betas = xpreds,
-    posteriors = posts
+    posteriors = posts,
+    call = clean_call
   )
   
   class(out) <- 'magicmap'
