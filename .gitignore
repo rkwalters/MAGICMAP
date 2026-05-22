@@ -2,3 +2,4 @@
 *.RData
 *.Rhistory
 /vignettes/*docx
+build_check.R

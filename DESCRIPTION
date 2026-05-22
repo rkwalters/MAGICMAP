@@ -1,9 +1,9 @@
 Package: MAGICMAP
 Title: MAGICMAP: Mixtures Aggregating Genes Into Coordinated Modules And Pathways
-Version: 0.1.2.9000
+Version: 0.1.2.9001
 Authors@R: c(
     person("Amanda", "Elliott", email = "aelliott@broadinstitute.org", role = c("aut")), 
-    person("Ran", "Cui", role=c("ctb")),
+    person("Ran", "Cui", role=c("aut")),
     person("Raymond", "Walters", email = "rwalters@broadinstitute.org", role = c("aut", "cre"))
     )
 Description: Compare genetic effect sizes (with standard errors) 
@@ -23,7 +23,9 @@ Imports:
 Remotes:
     github::aelliott08/SCOUTJOY,
     github::rkwalters/yorktools
-Suggests: R.rsp
+Suggests: 
+    R.rsp,
+    RColorBrewer
 VignetteBuilder: R.rsp
 Encoding: UTF-8
 LazyData: true

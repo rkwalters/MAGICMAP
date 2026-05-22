@@ -12,7 +12,7 @@
 # * verbose: whether to print loglik at each iteration; setting to >1 additional prints ll for inner slope iterations
 #
 # Returns:
-# structured list of class 'magicmap'
+# structured list of class 'magicmap_single', without scoutjoy_test
 
 
 magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTolerance=1e-12, InnerTolerance=1e-12, verbose=FALSE){
@@ -306,7 +306,7 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
     )
   }
   
-  class(out) <- 'magicmap'
+  class(out) <- 'magicmap_single'
   
   return(out)
   
@@ -413,8 +413,8 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #'
 #'   \item{\code{call}}{
 #'     Call object containing all arguments used 
+#'   }
 #'   
-#'
 #' }
 #' 
 #' The \code{component_proportions}, \code{slopes}, \code{predicted_target_betas}, and \code{posteriors} are each structured as a list with entries named for the number of fitted components (e.g. \code{mix2components}, \code{mix3components}, etc). Within each model, mixture components are ordered from highest to lowest slope.
@@ -499,7 +499,7 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
     
     if(any(grepl("Slopes not well differentiated",mod$fit_stats$notes))){
       if(forceAllK){
-        warning(paste0("Components collapsed at k=",k[i]"))
+        warning(paste0("Components collapsed at k=",k[i]))
       }else{
         stop_k_too_high <- T
         if(i < length(k)){
@@ -583,7 +583,7 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
   call_obj <- rlang::call_match(defaults=TRUE)
   fn <- call_obj[[1]]
   data_name <- call_obj$data
-  args <- call_obj$data[-1]
+  args <- call_obj[-1]
   arg_vals <- sapply(args[-1], eval.parent)
   clean_call <- as.call(c(fn, data_name, arg_vals))
 
@@ -911,13 +911,3 @@ plot.magicmap <- function(model, which_plot=NULL, class_thresh=0.95, label_comp=
   par(mar=mar_bak, mgp=mgp_bak)
   
 }
-
-# detach("package:MAGICMAP", unload = T)
-# remove.packages("MAGICMAP")
-# setwd("~/Documents/Code/github/MAGICMAP")
-# devtools::document()
-# devtools::build(manual=T)
-# install.packages("~/Documents/Code/github/MAGICMAP_0.1.1.1.tar.gz")
-# require(MAGICMAP)
-# mm <- MAGICMAP::magicmap(dat, "x","sx","y","sy",k=1:3,estimator="MLE")
-# mm <- MAGICMAP::magicmap(data.frame(x=x_obs,y=y,sx=x_se,sy=x_se), "x","sx","y","sy",k=1:3, estimator="MLE")
