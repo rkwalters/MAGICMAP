@@ -1,0 +1,822 @@
+.magicmap_default_colors <- function(k){
+  
+  if(k > 19){
+    stop(paste("Default colors are only available for k <= 19. Please specify colors."))
+  }
+  
+  if(!requireNamespace("RColorBrewer", quietly = TRUE)) {
+    colors <- c("#1b9e77","#d95f02","#7570b3","#e7298a","#66a61e","#e6ab02","#a6761d",
+                "#e41a1c","#377eb8","#984ea3","#ffff33","#a65628",
+                "#66c2a5","#fc8d62","#8da0cb","#e78ac3","#a6d854","#ffd92f","#e5c494")
+  }else{
+    colors <- c(RColorBrewer::brewer.pal(7,"Dark2"), RColorBrewer::brewer.pal(7,"Set1")[c(1,2,4,6,7)], RColorBrewer::brewer.pal(7,"Set2"))
+  }
+  
+  colors <- c(colors[1:k],"gray70")
+}
+
+
+
+#' Basic Scatter Plot of MAGICMAP results
+#' 
+#' @description
+#' A scatter plot showing the regression mixture components fitted to the two sets of the effect size estimates by a MAGICMAP model.
+#' 
+#' 
+#' @param model
+#' output of \code{\link{magicmap}}()
+#' 
+#' @param which_model
+#' numeric, which model to plot (when multiple models were fit). Default is the model with lowest BIC.
+#' 
+#' @param class_thresh
+#' threshold of posterior probability to use for assigning variants to components
+#' 
+#' @param label_comp
+#' Numeric, which mixture component to label points from. Unclassified points are treated as the k+1 component.
+#' 
+#' @param colors
+#' set of k+1 colors to use for plotting. Last color is used for unclassified variants.
+#' 
+#' @param se_bars
+#' logical, whether to include standard error bars
+#' 
+#' @param se_color
+#' color(s) to use for standard errors, either a single color or a vector of k+1 colors
+#' 
+#' @param legend
+#' logical, whether to include a legend
+#' 
+#' @param comp_names
+#' list of names to use for mixture components (only affects legend)
+#' 
+#' @param se_length
+#' length for caps on SE intervals; passed to \code{\link[graphics]{arrows}}()
+#' 
+#' @param conf_region
+#' Logical, whether to include 95\% confidence bands for slopes based on their SEs 
+#' 
+#' @param assigned_cex
+#' point size scaling factor for variants assigned to a component
+#' 
+#' @param unassigned_cex
+#' point size scaling factor for variants that are not assigned to a component
+#' 
+#' @param label_cex
+#' scaling factor for text labels (if applicable)
+#'
+#' @param hide_warnings
+#' Logical, whether to skip printing warnings (highly discouraged)
+#'
+#' @param ...
+#' additional parameters to be passed directly to \code{\link[base]{plot}}()
+#'
+#'
+#' @export plot.magicmap
+#' @export plot.magicmap_single
+#' @export
+#'
+
+plot.magicmap <- function(model, which_model=NULL, class_thresh=0.95, label_comp=NULL, colors=NULL, se_bars=TRUE, se_color="gray70", legend=TRUE, comp_names=NULL, se_length=0.025, conf_region=TRUE, assigned_cex=1, unassigned_cex=1, label_cex=0.8, hide_warnings=FALSE, ...){  
+  args <- list(...)
+  
+  selected_model <- extract_model(model, which_model=which_model, hide_warnings=hide_warnings)
+  
+  x <- selected_model$posteriors[,1]
+  y <- selected_model$posteriors[,3]
+  sx <- selected_model$posteriors[,2]
+  sy <- selected_model$posteriors[,4]
+  
+  if(!("xlab" %in% names(args))){
+    args$xlab <- colnames(selected_model$posteriors)[1]
+  }
+  
+  if(!("ylab" %in% names(args))){
+    args$ylab <- colnames(selected_model$posteriors)[3]
+  }
+  
+
+  k <- selected_model$fit_stats$k_components[1]
+  
+  slopes <- selected_model$slopes[,"b"]
+  slopese <- selected_model$slopes[,"se"]
+  
+  
+  if(k==1){
+    classes=rep(1, nrow(selected_model$posteriors))
+  }else{
+    classes <- apply(selected_model$posteriors[,-c(1:4)], MARGIN = 1, which.max)
+    maxprob <- apply(selected_model$posteriors[,-c(1:4)], MARGIN = 1, max)
+    classes[maxprob < class_thresh] <- k+1
+  }
+
+  
+  if(is.null(colors)){
+    colors <- .magicmap_default_colors(k)
+  }
+  
+  if(!(length(se_color) %in% c(1, k+1))){
+    stop("se_color must either a single value or k+1 values")
+  }
+  
+  
+  if(!("xlim" %in% names(args))){
+    args$xlim <- c(min(0,min(x-sx)), 1.25*max(x+sx))
+  }
+  
+  if(!("xaxs" %in% names(args))){
+    args$xaxs <- "i"
+  }
+  
+  if(!("ylim" %in% names(args))){
+    args$ylim <- c(min(0,min(y-sy)), 1.25*max(y+sy))
+  }
+  
+  
+  if(!("main" %in% names(args))){
+    args$main <- ""
+  }
+  
+  if(!("pch" %in% names(args))){
+    args$pch <- 20
+  }
+  
+  if("cex" %in% names(args)){
+    if(!hide_warnings){
+      warning("cex is not used; see assigned_cex, unassigned_cex, and label_cex or more specific default parameters (e.g. cex.axis, cex.lab)")
+    }
+  }
+  
+  if(!("cex.axis" %in% names(args))){
+    args$cex.axis <- 0.8
+  }
+  
+  if(!("col" %in% names(args))){
+    args$col <- colors[classes]
+  }
+  
+  if(!("lwd" %in% names(args))){
+    args$lwd <- 2
+  }
+  
+  if(!("las" %in% names(args))){
+    args$las <- 1
+  }
+  
+  if(!("tcl" %in% names(args))){
+    args$tcl <- -0.25
+  }
+  
+  if(!("mar" %in% names(args))){
+    mar <- c(3.5, 3.5, 0.25, 0.25)
+  }else{
+    mar <- args$mar
+  }
+  
+  if(!("mgp" %in% names(args))){
+    mgp <- c(2.5,0.5,0)
+  }else{
+    mgp <- args$mgp
+  }
+  
+  mar_bak <- par()$mar
+  mgp_bak <- par()$mgp
+  
+  par(mar=mar, mgp=mgp)
+  
+  args$x <- 0
+  args$y <- 0
+  plotcol <- args$col
+  args$col <- rgb(0,0,0,0)
+  args$bty='l'
+  do.call(plot, args)
+  args$col <- plotcol
+  
+  if(conf_region){
+    for(i in 1:k){
+      if(!is.na(slopese[i])) {
+        
+        if(min(x-sx)<0){
+          polygon(x=c(
+            0,
+            min(x-sx), 
+            min(x-sx),
+            0,
+            max(x+sx), 
+            max(x+sx)
+          ),
+          y=c(
+            0,
+            min(x-sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i]), 
+            min(x-sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            0,
+            max(x+sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            max(x+sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i])
+          ),
+          border=FALSE,
+          col=adjustcolor(colors[i], alpha.f=0.3))
+        }else{
+          polygon(x=c(
+            min(x-sx), 
+            min(x-sx),
+            max(x+sx), 
+            max(x+sx)
+          ),
+          y=c(
+            min(x-sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i]), 
+            min(x-sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            max(x+sx)*(slopes[i]+qnorm(.025,lower=F)*slopese[i]), 
+            max(x+sx)*(slopes[i]-qnorm(.025,lower=F)*slopese[i])
+          ),
+          border=FALSE,
+          col=adjustcolor(colors[i], alpha.f=0.3))
+        }
+        
+      }
+    }
+  }
+  
+  abline(h=0,col="grey20",lwd=0.5)
+  abline(v=0,col="grey20",lwd=0.5)
+  abline(0,1,col="grey80",lty=2)
+  abline(0,-1,col="grey80",lty=2)
+  
+  
+  if(se_bars){
+    if(length(se_color)==1){
+      arrows(x0=x, x1=x, y0=y-sy, y1=y+sy, length=se_length, angle=90, code=3, col=se_color)
+      arrows(x0=x-sx, x1=x+sx, y0=y, y1=y, length=se_length, angle=90, code=3, col=se_color)
+    }else{
+      arrows(x0=x, x1=x, y0=y-sy, y1=y+sy, length=se_length, angle=90, code=3, col=se_color[classes])
+      arrows(x0=x-sx, x1=x+sx, y0=y, y1=y, length=se_length, angle=90, code=3, col=se_color[classes])
+    }
+  }
+  
+  points(x[classes==(k+1)], y[classes==(k+1)],
+         pch=args$pch,
+         col=args$col[classes==(k+1)],
+         cex=unassigned_cex)
+  
+  for(i in 1:k){
+    points(x[classes==i], y[classes==i],
+           pch=args$pch,
+           col=args$col[classes==i],
+           cex=assigned_cex)
+  }
+  
+  for(i in 1:k){
+    abline(0, slopes[i], col=colors[i], lwd=args$lwd)
+  }
+  
+  
+  if(legend){
+    if(is.null(comp_names)){
+      comp_names <- c(paste("Component ",1:k), "Unclassified")
+    }else if(length(comp_names)==k){
+      comp_names <- c(comp_names, "Unclassified")
+    }
+    
+    legend("topright", 
+           fill=colors,
+           border=colors,
+           # lwd=rep(lwd,k+1), 
+           cex = label_cex, 
+           bg="white",
+           box.col="white", 
+           legend = comp_names)
+  }
+  
+  if(!is.null(label_comp)){
+    
+    df_post <- selected_model$posteriors
+
+    
+    for(c in label_comp){
+      text(x=df_post[classes==c, 1], 
+           y=df_post[classes==c, 3], 
+           labels=rownames(df_post)[classes==c], 
+           cex=label_cex, 
+           adj=c(-.1,-.25))
+    }
+  }
+  
+  par(mar=mar_bak, mgp=mgp_bak)
+  
+}
+
+
+
+
+#' MAGICMAP results figure showing distribution of ratio of effect sizes
+#' 
+#' @description
+#' Alternative plot of MAGICMAP results based on the estimated distribution of ratios between the two input effect sizes. By default includes a histogram of the estimated per-component distributions, a forest plot of the estimated ratio for each variant, and a scatter plot showing the fitted regression.
+#' 
+#' @param model
+#' output of \code{\link{magicmap}}()
+#' 
+#' @param target_name
+#' string, name for labeling the target (x axis) trait
+#' 
+#' @param comparator_name
+#' string, name for labeling the comparator (y axis) trait
+#' 
+#' @param panels
+#' which panels to include in the figure. Options are: "all","hist","histforest" (histogram+forest plot),"forest", or "foresttable" (forest plot+table)
+#' 
+#' @param output_forest_data
+#' whether to output the "raw" plotted data, the summarized values for the "forest" plot, or "none" (default) 
+#' 
+#' @param which_model
+#' numeric, which model to plot (when multiple models were fit). Default is the model with lowest BIC.
+#' 
+#' #' @param CovIntercept 
+#' Intercept from LDSC (Bulik-Sullivan et al. 2015) genetic correlation analysis (\code{gcov_int}) used to fit MAGICMAP. Will be extracted from the model object if possible. 
+#' 
+#' @param TargetXIntercept
+#' Intercept from LDSC heritability analysis of the target (x axis) trait used to fit MAGICMAP. Will be extracted from the model object if possible.
+#' 
+#' @param ComparatorYIntercept
+#' Intercept from LDSC heritability analysis of the comparator (y axis) trait used to fit MAGICMAP. Will be extracted from the model object if possible.
+#' 
+#' @param class_thresh
+#' threshold of posterior probability to use for assigning variants to components
+#' 
+#' @param forest_drop_unassigned
+#' omit unassigned points from forest plot (if applicable)
+#' 
+#' @param conf_region
+#' Logical, whether to include 95\% confidence bands for slopes based on their SEs 
+#' 
+#' @param colors
+#' set of k+1 colors to use for plotting. Last color is used for unclassified variants.
+#' 
+#' @param cex_forest_labels
+#' size scaling for text in forest plot/table
+#' 
+#' @param n_mc
+#' number of monte carlo replicates to simulate to estimate the distribution of effect size ratios
+#' 
+#' @param seed
+#' seed for monte carlo estimation of distribution of effect size ratios
+#'
+#' @param ...
+#' additional parameters (currently ignored)
+#'
+#'
+#' @export
+#'
+
+ratio_figure <- function(model, target_name=NULL, comparator_name=NULL, panels="all", output_forest_data="none", which_model=NULL, CovIntercept=NULL, TargetXIntercept=NULL, ComparatorYIntercept=NULL, class_thresh=0.95, forest_drop_unassigned=FALSE, conf_region=TRUE, colors=NULL, cex_forest_labels=0.5, layout_widths=NULL, layout_heights=NULL, n_mc=20000, seed=NULL, ...){  
+  
+  args <- list(...)
+  
+  if(class(model) != "magicmap" && class(model) != "magicmap_single"){
+    stop("model must be a magicmap results object")
+  }
+  
+  ##########
+  # Setup
+  ##########
+  
+  if(!is.null(seed)){
+    set.seed(seed)
+  }
+  
+  num_breaks = 501
+  
+  panels_opts <- c("all","hist","histforest","forest","foresttable")
+  if(!(panels %in% panels_opts)){
+    stop(paste("panels must be one of:",paste(panels_opts,collapse = ",")))
+  }
+  
+  if(!(output_forest_data %in% c("raw","forest","none"))){
+    stop(paste("output_forest_data must be one of:",paste(c("raw","forest","none"),collapse = ",")))
+  }
+  
+  
+  # for old yorkmix output, fake output format
+  if(class(model) != "magicmap" && class(model) != "magicmap_single"){
+    warning("Does not appear to be magicmap output, will try to convert")
+    
+    model$slopes <- model$parameters
+    for(i in 1:nrow(model$fit_stats)){
+      model$slopes[[i]] <- cbind(model$slopes[[i]],se=NA)
+    }
+    model$scoutjoy_test <- data.frame(Pvalue=0,RSS=NA)
+    class(model) <- 'magicmap'
+    
+  }
+  
+  ###
+  # get info about model to plot
+  ###
+  
+  selected_model <- extract_model(model, which_model=which_model, hide_warnings=FALSE)
+
+  if(is.null(target_name)){
+    target_name <- colnames(model$posteriors)[1]
+  }
+  if(is.null(comparator_name)){
+    comparator_name <- colnames(model$posteriors)[3]
+  }
+
+  k <- selected_model$fit_stats$k_components[1]
+  tab <- selected_model$posteriors
+  
+  
+  ###
+  # extract LDSC arguments from magicmap call if possible
+  ###
+  if("call" %in% names(selected_model)){
+    ldsc_in_call <- NULL
+    if(!is.null(CovIntercept)){
+      ldsc_in_call <- c(ldsc_in_call, "CovIntercept")
+    }
+    if(!is.null(TargetXIntercept)){
+      ldsc_in_call <- c(ldsc_in_call, "TargetXIntercept")
+    }
+    if(!is.null(ComparatorYIntercept)){
+      ldsc_in_call <- c(ldsc_in_call, "ComparatorYIntercept")
+    }
+    if(!is.null(ldsc_in_call)){
+      warning(paste("Arguments ",paste0(ldsc_in_call,collapse=", "), "overriden by values saved in model."))
+    }
+    CovIntercept <- selected_model$call$CovIntercept
+    TargetXIntercept <- selected_model$call$TargetXIntercept
+    ComparatorYIntercept <- selected_model$call$ComparatorYIntercept
+    
+  }else{
+    # use defaults if unspecified
+    ldsc_defaulted <- NULL
+    if(is.null(CovIntercept)){
+      ldsc_defaulted <- c(ldsc_in_call, "CovIntercept")
+      CovIntercept <- 0
+    }
+    if(is.null(TargetXIntercept)){
+      ldsc_defaulted <- c(ldsc_in_call, "TargetXIntercept")
+      TargetXIntercept <- 1
+    }
+    if(is.null(ComparatorYIntercept)){
+      ldsc_defaulted <- c(ldsc_in_call, "ComparatorYIntercept")
+      ComparatorYIntercept <- 1
+    }
+    if(!is.null(ldsc_defaulted)){
+      warning(paste(paste0(ldsc_defaulted,collapse=", "), "not specified or saved in model. Assuming no correlation."))
+    }
+  }
+  
+  rr <- CovIntercept * sqrt(TargetXIntercept*ComparatorYIntercept)
+  
+  
+  ###
+  # colors
+  ###
+  if(is.null(colors)){
+    colors <- .magicmap_default_colors(k)
+  }
+
+  
+  
+  ##########
+  # Estimate distribution of ratios
+  ##########
+  
+  # simulate distribution of ratio for each variant
+  mc <- data.frame(id=rep(rownames(tab), each=n_mc),
+                   ratio=NA)
+  
+  for(i in 1:nrow(tab)){
+    sim <- mvtnorm::rmvnorm(n_mc,
+                            mean = as.numeric(tab[i,c(1,3)]),
+                            sigma = matrix(c(tab[i,2]^2,
+                                             rr*tab[i,2]*tab[i,4],
+                                             rr*tab[i,2]*tab[i,4],
+                                             tab[i,4]^2),2,2))
+    mc$ratio[mc$id==rownames(tab)[i]] <- sim[,2]/sim[,1]
+  }
+  
+  
+  # summarize CI, group for each snp
+  forest <- data.frame(
+    id=rownames(tab),
+    rat=tab[,3]/tab[,1],
+    lb=NA,
+    ub=NA,
+    cat=NA,
+    prob=NA
+  )
+  
+  for(i in 1:nrow(tab)){
+    cat <- which(tab[i,5:ncol(tab)] > class_thresh)
+    if(length(cat)==0){
+      cat <- k+1
+      forest$prob[i] <- max(tab[i,5:ncol(tab)])
+    }else{
+      cat <- which.max(tab[i,5:ncol(tab)])
+      forest$prob[i] <- tab[i,c(5:ncol(tab))[cat]]
+    }
+    forest$cat[i] <- cat
+    
+    forest$lb[i] <- quantile(mc$ratio[mc$id==rownames(tab)[i]], .025)
+    forest$ub[i] <- quantile(mc$ratio[mc$id==rownames(tab)[i]], .975)
+  }
+  
+  cols <- colors[1:(k+1)]
+  forest$col <- colors[forest$cat]
+
+  
+  
+  ##########
+  # Begin plotting
+  ##########
+
+  ###
+  # setup layout
+  ###
+  par_backup <- par(no.readonly = TRUE)
+  
+  if(panels=="all"){
+    if(is.null(layout_widths)){
+      widths <- c(3,2)
+    }else{
+      if(length(layout_widths)!=2){
+        stop("Require 2 values in layout_widths when plotting all panels")
+      }else{
+        widths <- layout_widths
+      }
+    }
+    if(is.null(layout_heights)){
+      heights <- c(1,3)
+    }else{
+      if(length(layout_heights)!=2){
+        stop("Require 2 values in layout_heights when plotting all panels")
+      }else{
+        heights <- layout_heights
+      }
+    }
+    nf <- layout(matrix(c(1, 2, 3, 4), ncol = 2, byrow = TRUE), 
+                 widths = widths, heights = heights)
+    
+  }else if(panels=="hist"){
+    if(!is.null(layout_widths) || !is.null(layout_widths)){
+      warning("layout_widths and layout_heights are ignored when plotting only 1 panel")
+    }
+    nf <- layout(matrix(1, ncol = 1), widths = 1, heights = 1)
+    
+  }else if(panels=="histforest"){
+    if(!is.null(layout_widths)){
+      warning("layout_widths are ignored when plotting only histogram + forest plot")
+    }
+    if(is.null(layout_heights)){
+      heights <- c(1,3)
+    }else{
+      if(length(layout_heights)!=2){
+        stop("Require 2 values in layout_heights when plotting all panels")
+      }else{
+        heights <- layout_heights
+      }
+    }
+    nf <- layout(matrix(c(1, 2), ncol = 1, byrow = TRUE), 
+                 widths = 1, heights = heights)
+    
+  }else if(panels=="forest"){
+    if(!is.null(layout_widths) || !is.null(layout_widths)){
+      warning("layout_widths and layout_heights are ignored when plotting only 1 panel")
+    }
+    nf <- layout(matrix(1, ncol = 1), widths = 1, heights = 1)
+    
+  }else if(panels=="foresttable"){
+    if(is.null(layout_widths)){
+      widths <- c(3,2)
+    }else{
+      if(length(layout_widths)!=2){
+        stop("Require 2 values in layout_widths when plotting the forest plot with table")
+      }else{
+        widths <- layout_widths
+      }
+    }
+    if(!is.null(layout_heights)){
+      warning("layout_heights are ignored when plotting only the forest plot")
+    }
+    nf <- layout(matrix(c(1, 2), ncol = 2, byrow = TRUE), 
+                 widths = widths, heights = 1)
+    
+  }else{
+    stop("Bad argument to panels somehow missed by initial checks?")
+  }
+  
+  
+  
+  ###
+  # density histogram
+  ###
+  
+  if(panels %in% c("all","hist","histforest")){
+    
+    par(mar=c(.1,3,.5,.1), mgp=c(1,.5,.0)) 
+    
+    hh <- hist(mc$ratio,
+               breaks=c(-Inf,seq(min(forest$lb),max(forest$ub),length.out=num_breaks),Inf),
+               plot = F)
+    
+    plot(hh$mids,hh$density,
+         type="l",
+         xlim=c(min(0, -0.1+min(forest$lb)),
+                max(0, 0.1+max(forest$ub))),     
+         ylab="Density",
+         xlab="Effect size ratio",
+         bty="l",
+         cex.axis=0.75,
+         cex.lab=0.75,
+         xaxt='n',
+         yaxt='n',
+         yaxs='i')
+    
+    if(any(forest$cat==(k+1))){
+      hh0 <- hist(mc$ratio[mc$id %in% forest$id[forest$cat==(k+1)]],
+                  breaks=c(-Inf,seq(min(forest$lb),max(forest$ub),length.out=num_breaks),Inf),
+                  plot = F)
+      polygon(x=c(hh0$mids[2],hh0$mids[2:(length(hh0$density)-1)],tail(hh0$mids,2)[1]),
+              y=mean(forest$cat==(k+1))*c(0,hh0$density[2:(length(hh0$density)-1)],0),
+              col=adjustcolor(cols[k+1], alpha.f=0.7),
+              border=NA)
+    }
+    
+    for(i in 1:k){
+      hhk <- hist(mc$ratio[mc$id %in% forest$id[forest$cat==i]],
+                  breaks=c(-Inf,seq(min(forest$lb),max(forest$ub),length.out=num_breaks),Inf),
+                  plot = F)
+      polygon(x=c(hhk$mids[2],hhk$mids[2:(length(hhk$density)-1)],tail(hhk$mids,2)[1]),
+              y=mean(forest$cat==i)*c(0,hhk$density[2:(length(hhk$density)-1)],0),
+              col=adjustcolor(cols[i], alpha.f=0.7),
+              border=NA)
+    }
+    
+    
+    for(i in 1:k){
+      # separate loop to keep these reference lines on top layer of plot
+      abline(v=selected_model$slopes[i,"b"],col=cols[i],lty=2,lwd=2)
+    }
+    
+  }
+  
+  
+  
+  ###
+  # scatter plot
+  ###
+  
+  if(panels %in% c("all")){
+    
+    plot.magicmap(
+      selected_model,
+      which_model = NULL,
+      class_thresh = class_thresh,
+      colors = cols,
+      legend = FALSE,
+      conf_region = conf_region,
+      hide_warnings = TRUE, # already warns outside this outside function
+      mar=c(1,1,.5,.1),
+      mgp=c(0,0,0),
+      xlim=c(0,1.1*max(tab[,1]+1.75*tab[,2])),
+      ylim=c(min(0,min(tab[,3]-1.75*tab[,4])),
+             max(0,max(tab[,3]+1.75*tab[,4]))),
+      cex.axis=0.3, 
+      cex.lab=0.6,
+      xlab=paste(target_name,"GWAS Beta"), 
+      ylab=paste(comparator_name,"GWAS Beta"), 
+      xaxt='n', 
+      yaxt='n',
+      bty='n',
+      axes=F,
+      xaxs="i",
+      # yaxs="i",
+      lwd=2,
+      se_length=0.02,
+      se_color="gray85",
+      assigned_cex=1.2, 
+      unassigned_cex=0.75
+    )
+    
+  }
+  
+  
+  
+  ###
+  # forest plot
+  ###
+  
+  if(panels %in% c("all","histforest","forest","foresttable")){
+    
+    par(mar=c(2,3,.1,.1), mgp=c(1,0.5,0)) 
+    
+    # sort by precision and optionally drop unassigned obs
+    idx_tmp <- order(forest$ub-forest$lb,decreasing = T)
+    idx <- NULL
+    if(forest_drop_unassigned){
+      forest_comps <- c(k:1)
+    }else{
+      forest_comps <- c((k+1):1)
+    }
+    for(cc in forest_comps){
+      idx <- c(idx, idx_tmp[forest$cat[idx_tmp]==cc])
+    }
+    forest_include <- forest[idx,]
+    
+    # init plot
+    plot(c(0,2),
+         col=rgb(0,0,0,0),
+         xlim=c(min(0, -0.1+min(forest$lb)),
+                max(0, 0.1+max(forest$ub))),
+         ylim=c(1,nrow(forest_include)+2),
+         bty='n',
+         xlab="Effect size ratio",
+         ylab="",
+         cex.axis=0.5,
+         cex.lab=0.5,
+         yaxt='n'
+    )
+    
+    
+    for(i in 1:nrow(forest_include)){
+      arrows(x0=forest_include$lb[i],x1=forest_include$ub[i],
+             y0=i,y1=i,
+             code=3,
+             angle = 90,
+             col = "grey80",
+             length=0.02
+      )
+    }
+    
+    points(forest_include$rat,1:nrow(forest_include),
+           pch=20,
+           cex=ifelse(forest_include$cat==0, 1, 1.5),
+           col=forest_include$col)
+    
+    mtext(substitute(paste(bold("Locus"))),
+          side=2,
+          at=nrow(forest_include)+1.25,
+          las=2,
+          cex=1.33*cex_forest_labels,
+          adj=1.25)
+    
+    for(i in 1:k){
+      abline(v=selected_model$slopes[i,"b"],col=cols[i],lty=2,lwd=2)
+    }
+    
+    axis(2, 1:nrow(forest_include), labels = forest_include$id, tick = F, las=2, cex.axis=cex_forest_labels)
+    
+  }
+  
+  
+  
+  ###
+  # forest plot table
+  ###
+  
+  if(panels %in% c("all","foresttable")){
+    
+    par(mar=c(2,.1,.1,.1), mgp=c(1.5,0.5,0)) # c(5,4,4,2)+.1
+    
+    plot(c(0,2),
+         col=rgb(0,0,0,0),
+         xlim=c(-1,1),
+         ylim=c(1,nrow(forest_include)+2),
+         bty='n',
+         xlab="",
+         ylab="",
+         xaxt='n',
+         cex.axis=0.6,
+         cex.lab=0.75,
+         yaxt='n'
+    )
+    
+    text(paste0(sprintf("%0.3f",tab[idx,1])," (",sprintf("%0.3f",tab[idx,2]),")"),x=-.8,y=1:nrow(forest_include),cex=cex_forest_labels)
+    text(paste0(sprintf("%0.3f",tab[idx,3])," (",sprintf("%0.3f",tab[idx,4]),")"),x=0,y=1:nrow(forest_include),cex=cex_forest_labels)
+    text(sprintf("%0.3f",forest_include$prob),x=.8,y=1:nrow(forest_include),cex=cex_forest_labels)
+    text(x=-.8,y=nrow(forest_include)+2,adj=0.5,bquote(paste(bold(.(target_name)))), cex=1.33*cex_forest_labels)
+    text(x=-.8,y=nrow(forest_include)+1,adj=0.5,bquote(paste(bold("Beta (SE)"))), cex=1.33*cex_forest_labels)
+    text(x=0,y=nrow(forest_include)+2,adj=0.5,bquote(paste(bold(.(comparator_name)))), cex=1.33*cex_forest_labels)
+    text(x=0,y=nrow(forest_include)+1,adj=0.5,bquote(paste(bold("Beta (SE)"))), cex=1.33*cex_forest_labels)
+    text(x=.8,y=nrow(forest_include)+2,adj=0.5,bquote(paste(bold("Posterior"))), cex=1.33*cex_forest_labels)
+    text(x=.8,y=nrow(forest_include)+1,adj=0.5,bquote(paste(bold("Prob."))), cex=1.33*cex_forest_labels)
+    
+  }
+  
+  nf <- layout(matrix(1, ncol = 1), widths = 1, heights = 1)
+  par(par_backup)
+  
+  
+  ###
+  # optional return values to save data
+  ###
+  if(output_forest_data=="raw"){
+    return(mc)
+  }else if(output_forest_data=="summary"){
+    return(forest)
+  }
+  
+}
+
+
