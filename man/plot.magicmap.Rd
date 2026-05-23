@@ -9,6 +9,8 @@
   model,
   which_model = NULL,
   class_thresh = 0.95,
+  diagnostics = c("summary"),
+  outer_title = NULL,
   label_comp = NULL,
   colors = NULL,
   se_bars = TRUE,
@@ -20,6 +22,9 @@
   assigned_cex = 1,
   unassigned_cex = 1,
   label_cex = 0.8,
+  CovIntercept = NULL,
+  TargetXIntercept = NULL,
+  ComparatorYIntercept = NULL,
   hide_warnings = FALSE,
   ...
 )
@@ -28,6 +33,8 @@
   model,
   which_model = NULL,
   class_thresh = 0.95,
+  diagnostics = c("summary"),
+  outer_title = NULL,
   label_comp = NULL,
   colors = NULL,
   se_bars = TRUE,
@@ -39,6 +46,9 @@
   assigned_cex = 1,
   unassigned_cex = 1,
   label_cex = 0.8,
+  CovIntercept = NULL,
+  TargetXIntercept = NULL,
+  ComparatorYIntercept = NULL,
   hide_warnings = FALSE,
   ...
 )
@@ -50,7 +60,11 @@
 
 \item{class_thresh}{threshold of posterior probability to use for assigning variants to components}
 
-\item{label_comp}{Numeric, which mixture component to label points from. Unclassified points are treated as the k+1 component.}
+\item{diagnostics}{Which homogeneity diagnostics to annotate. Can include "summary" (legend with categorical decisions) and/or "details" (metrics annotated on regression line).}
+
+\item{outer_title}{(optional) string for a title added to the outer margin. If specified, SCOUTJOY global test results are also appended to the title.}
+
+\item{label_comp}{Numeric, which mixture component(s) to label points from. Unclassified points are treated as the k+1 component.}
 
 \item{colors}{set of k+1 colors to use for plotting. Last color is used for unclassified variants.}
 
@@ -71,6 +85,12 @@
 \item{unassigned_cex}{point size scaling factor for variants that are not assigned to a component}
 
 \item{label_cex}{scaling factor for text labels (if applicable)}
+
+\item{CovIntercept}{For adding profiling to old MAGICMAP objects without saved call information, the intercept from LDSC (Bulik-Sullivan et al. 2015) genetic correlation analysis (\code{gcov_int}) used to fit MAGICMAP.}
+
+\item{TargetXIntercept}{For adding profiling to old MAGICMAP objects without saved call information, the intercept from LDSC heritability analysis of the target (x axis) trait used to fit MAGICMAP.}
+
+\item{ComparatorYIntercept}{For adding profiling to old MAGICMAP objects without saved call information, the intercept from LDSC heritability analysis of the comparator (y axis) trait used to fit MAGICMAP.}
 
 \item{hide_warnings}{Logical, whether to skip printing warnings (highly discouraged)}
 
