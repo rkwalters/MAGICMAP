@@ -1,6 +1,6 @@
 Package: MAGICMAP
 Title: MAGICMAP: Mixtures Aggregating Genes Into Coordinated Modules And Pathways
-Version: 0.1.2.9004
+Version: 0.1.2.9005
 Authors@R: c(
     person("Amanda", "Elliott", email = "aelliott@broadinstitute.org", role = c("aut")), 
     person("Ran", "Cui", role=c("aut")),

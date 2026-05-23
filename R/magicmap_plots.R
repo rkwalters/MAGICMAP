@@ -266,11 +266,6 @@ plot.magicmap <- function(model, which_model=NULL, class_thresh=0.95, diagnostic
     mar <- args$mar
   }
   
-  if(!is.null(outer_title)){
-    oma_bak=par()$oma
-    par(oma = c(0, 0, 5, 0))
-  }
-  
   if(!("mgp" %in% names(args))){
     mgp <- c(2.5,0.5,0)
   }else{
@@ -479,8 +474,7 @@ plot.magicmap <- function(model, which_model=NULL, class_thresh=0.95, diagnostic
     fit_cex <- max(fit_cex, 0.6)
     
     mtext(title_line1, outer = TRUE, side = 3, line = 1, font = 2, cex = fit_cex, adj = 0.5) 
-    par(oma=oma_bak)
-    par(mar=mar_bak, mgp=mgp_bak,oma=oma_bak)
+    par(mar=mar_bak, mgp=mgp_bak, oma=oma_bak)
   }else{
     par(mar=mar_bak, mgp=mgp_bak)
   }
@@ -559,7 +553,7 @@ plot.magicmap_single <- plot.magicmap
 #' @export
 #'
 
-ratio_figure <- function(model, target_name=NULL, comparator_name=NULL, panels="all", output_forest_data="none", which_model=NULL, CovIntercept=NULL, TargetXIntercept=NULL, ComparatorYIntercept=NULL, class_thresh=0.95, forest_drop_unassigned=FALSE, conf_region=TRUE, colors=NULL, cex_forest_labels=0.5, layout_widths=NULL, layout_heights=NULL, n_mc=20000, seed=NULL, ...){  
+plot_ratio_figure <- function(model, target_name=NULL, comparator_name=NULL, panels="all", output_forest_data="none", which_model=NULL, CovIntercept=NULL, TargetXIntercept=NULL, ComparatorYIntercept=NULL, class_thresh=0.95, forest_drop_unassigned=FALSE, conf_region=TRUE, colors=NULL, cex_forest_labels=0.5, layout_widths=NULL, layout_heights=NULL, n_mc=20000, seed=NULL, ...){  
   
   args <- list(...)
   
