@@ -202,46 +202,12 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
   colnames(post_est) <- paste0("ProbClass",1:k)
   rownames(post_est) <- rownames(data)
   posteriors <- cbind(data,post_est)
-    
-  # Genimi code, passed initial inspection
-  # =================================================================
-  # BEGIN PER-COMPONENT METRICS (D2)
-  # =================================================================
-  raw_mahalanobis_d2 <- vector("list", k)
-
-  if (!empty_comp) {
-    # 2. Pre-calculate the inverse covariance matrix elements for ALL SNPs
-    # This vectorizes the math so we don't need slow loops!
-    det_Sigma <- dat$sx^2 * dat$sy^2 - (dat$re * dat$sx * dat$sy)^2
-    inv_11 <- dat$sy^2 / det_Sigma
-    inv_22 <- dat$sx^2 / det_Sigma
-    inv_12 <- -(dat$re * dat$sx * dat$sy) / det_Sigma
-
-    for(c in 1:k) {
-      # 3. Calculate D^2 for ALL variants relative to this component's specific line
-      resid_x <- dat$x - x_est
-      resid_y <- dat$y - (b_est[c] * x_est)
-
-      # The Mahalanobis quadratic form
-      d2_all <- (resid_x^2 * inv_11) + (resid_y^2 * inv_22) + (2 * resid_x * resid_y * inv_12)
-      
-      # Save the raw vector into the list
-      raw_mahalanobis_d2[[c]] <- d2_all
-    }
-  }
-
-  # Build the comprehensive parameters dataframe with placeholders for the post-hoc SEs
+  
   parameters <- data.frame(
     b = b_est, 
     se = NA
   )
-  
-  # Attach the raw D2 list as a list-column (data.frames don't like lists in the init function)
-  parameters$raw_mahalanobis_d2 <- raw_mahalanobis_d2
-  
-  # End Gemini code
-  # =================================================================
-  
+
   notes <- ""
   
   if(any(abs(diff(b_est,lag=1)) < 0.01)){
@@ -583,8 +549,8 @@ magicmap <- function(data, betaTargetX, sdTargetX, betaComparatorY, sdComparator
   call_obj <- rlang::call_match(defaults=TRUE)
   fn <- call_obj[[1]]
   data_name <- call_obj$data
-  args <- call_obj[-1]
-  arg_vals <- sapply(args[-1], eval.parent)
+  args <- rlang::call_args(call_obj)
+  arg_vals <- sapply(args[-1], eval.parent, simplify=FALSE)
   clean_call <- as.call(c(fn, data_name, arg_vals))
 
   out <- list(
