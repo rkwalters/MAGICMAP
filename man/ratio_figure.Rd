@@ -37,14 +37,13 @@ ratio_figure(
 
 \item{output_forest_data}{whether to output the "raw" plotted data, the summarized values for the "forest" plot, or "none" (default)}
 
-\item{which_model}{numeric, which model to plot (when multiple models were fit). Default is the model with lowest BIC.
+\item{which_model}{numeric, which model to plot (when multiple models were fit). Default is the model with lowest BIC.}
 
-#' @param CovIntercept 
-Intercept from LDSC (Bulik-Sullivan et al. 2015) genetic correlation analysis (\code{gcov_int}) used to fit MAGICMAP. Will be extracted from the model object if possible.}
+\item{CovIntercept}{For old MAGICMAP objects without saved call information, the intercept from LDSC (Bulik-Sullivan et al. 2015) genetic correlation analysis (\code{gcov_int}) used to fit MAGICMAP.}
 
-\item{TargetXIntercept}{Intercept from LDSC heritability analysis of the target (x axis) trait used to fit MAGICMAP. Will be extracted from the model object if possible.}
+\item{TargetXIntercept}{For old MAGICMAP objects without saved call information, the intercept from LDSC heritability analysis of the target (x axis) trait used to fit MAGICMAP.}
 
-\item{ComparatorYIntercept}{Intercept from LDSC heritability analysis of the comparator (y axis) trait used to fit MAGICMAP. Will be extracted from the model object if possible.}
+\item{ComparatorYIntercept}{For old MAGICMAP objects without saved call information, the intercept from LDSC heritability analysis of the comparator (y axis) trait used to fit MAGICMAP.}
 
 \item{class_thresh}{threshold of posterior probability to use for assigning variants to components}
 
