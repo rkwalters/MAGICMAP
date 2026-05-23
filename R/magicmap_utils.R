@@ -1,3 +1,55 @@
+
+.get_residcor_from_call <- function(selected_model, CovIntercept, TargetXIntercept, ComparatorYIntercept){
+
+  ###
+  # extract LDSC arguments from magicmap call if possible
+  ###
+  if("call" %in% names(selected_model)){
+    ldsc_in_call <- NULL
+    if(!is.null(CovIntercept)){
+      ldsc_in_call <- c(ldsc_in_call, "CovIntercept")
+    }
+    if(!is.null(TargetXIntercept)){
+      ldsc_in_call <- c(ldsc_in_call, "TargetXIntercept")
+    }
+    if(!is.null(ComparatorYIntercept)){
+      ldsc_in_call <- c(ldsc_in_call, "ComparatorYIntercept")
+    }
+    if(!is.null(ldsc_in_call)){
+      warning(paste("Arguments ",paste0(ldsc_in_call,collapse=", "), "overriden by values saved in model."))
+    }
+    CovIntercept <- selected_model$call$CovIntercept
+    TargetXIntercept <- selected_model$call$TargetXIntercept
+    ComparatorYIntercept <- selected_model$call$ComparatorYIntercept
+    
+  }else{
+    # use defaults if unspecified
+    ldsc_defaulted <- NULL
+    if(is.null(CovIntercept)){
+      ldsc_defaulted <- c(ldsc_in_call, "CovIntercept")
+      CovIntercept <- 0
+    }
+    if(is.null(TargetXIntercept)){
+      ldsc_defaulted <- c(ldsc_in_call, "TargetXIntercept")
+      TargetXIntercept <- 1
+    }
+    if(is.null(ComparatorYIntercept)){
+      ldsc_defaulted <- c(ldsc_in_call, "ComparatorYIntercept")
+      ComparatorYIntercept <- 1
+    }
+    if(!is.null(ldsc_defaulted)){
+      warning(paste(paste0(ldsc_defaulted,collapse=", "), "not specified or saved in model. Assuming no correlation."))
+    }
+  }
+  
+  re <- CovIntercept * sqrt(TargetXIntercept*ComparatorYIntercept)
+
+  return(re)
+}
+
+
+
+
 #' Extract single model from MAGICMAP results object
 #' 
 #' @description
@@ -74,9 +126,6 @@
 extract_magicmap_model <- function(model, which_model=NULL, hide_warnings=FALSE){
   
   if(class(model) == "magicmap_single"){
-    if(!hide_warnings){
-      warning("model has already been extracted to single model format")
-    }
     return(model)
   }else if(class(model) != "magicmap"){
     stop("model must be a magicmap results object")
