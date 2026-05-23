@@ -15,6 +15,7 @@ magicmap(
   CovIntercept = 0,
   TargetXIntercept = 1,
   ComparatorYIntercept = 1,
+  forceAllK = FALSE,
   inflateSEs = FALSE,
   estimator = "MLE",
   maxIterations = 1000,
@@ -28,11 +29,11 @@ magicmap(
 
 \item{betaTargetX}{String, giving the column name in \code{data} for the effect sizes (betas) on the target (x-axis) trait}
 
-\item{sdTargetX, }{String, giving the column name in \code{data} for the standard error (se) of the effect sizes on the target (x-axis) trait}
+\item{sdTargetX}{String, giving the column name in \code{data} for the standard error (se) of the effect sizes on the target (x-axis) trait}
 
 \item{betaComparatorY}{String, giving the column name in \code{data} for the effect sizes (betas) on the comparator (y-axis) trait}
 
-\item{sdComparatorY, }{String, giving the column name in \code{data} for the standard error (se) of the effect sizes on the comparator (y-axis) trait}
+\item{sdComparatorY}{String, giving the column name in \code{data} for the standard error (se) of the effect sizes on the comparator (y-axis) trait}
 
 \item{k}{Number of components to fit. Can be a scalar or a vector.}
 
@@ -43,6 +44,8 @@ magicmap(
 \item{TargetXIntercept}{Intercept from LDSC heritability analysis of the target (x axis) trait. Default = 1, which assumes no population stratification or other confounding.}
 
 \item{ComparatorYIntercept}{Intercept from LDSC heritability analysis of the comparator (y axis) trait. Default = 1, which assumes no population stratification or other confounding.}
+
+\item{forceAllK}{Logical, whether to continue estimating the model for all values in k even if components appear to collapse at a lower value. Default false.}
 
 \item{inflateSEs}{Logical, whether to apply LSDC h2 intercept adjustment to the input standard errors. By default, input SEs are used as given.}
 
@@ -93,8 +96,11 @@ A list of class 'magicmap' containing:
   \item{\code{posteriors}}{
     Data frame containing the original input data (i.e. the X effect size, X standard error, Y effect size, and Y standard error) and the estimated posterior probability of the observations being a member of each of the \code{k} mixture components.
   }
-  
 
+  \item{\code{call}}{
+    \code{\link[base]{call}} object containing all arguments used 
+  }
+  
 }
 
 The \code{component_proportions}, \code{slopes}, \code{predicted_target_betas}, and \code{posteriors} are each structured as a list with entries named for the number of fitted components (e.g. \code{mix2components}, \code{mix3components}, etc). Within each model, mixture components are ordered from highest to lowest slope.

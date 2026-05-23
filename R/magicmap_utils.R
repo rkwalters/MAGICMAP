@@ -19,7 +19,7 @@
 #' \describe{
 #'
 #'   \item{\code{scoutjoy_test}}{
-#'     Global test of heterogeneity from SCOUTJOY (Elliott et al., 2024). P-value is for null hypothesis that the effect sizes have a single homogeneous relationship for all variants.
+#'     (optional) Global test of heterogeneity from SCOUTJOY (Elliott et al., 2024). P-value is for null hypothesis that the effect sizes have a single homogeneous relationship for all variants.
 #'   }
 #'   
 #'   \item{\code{fit_stats}}{
@@ -52,7 +52,7 @@
 #'   }
 #'
 #'   \item{\code{call}}{
-#'     (optional) Call object containing all arguments used
+#'     (optional) \code{\link[base]{call}} object containing all arguments used
 #'   }
 #'   
 #'   \item{\code{profiler_metrics}}{
@@ -68,14 +68,10 @@
 #' Unlike a full 'magicmap' object, the \code{component_proportions}, \code{slopes}, \code{predicted_target_betas}, and \code{posteriors} fields are from a single regression model, and so are not nested lists and are not named for the number of fitted components (e.g. \code{mix2components}, \code{mix3components}, etc). Mixture components in the fitted model are ordered from highest to lowest slope.
 #' 
 #' 
-#' @export extract_model.magicmap
-#' @export extract_model.magicmap_single
 #' @export
 #' 
 
-
-
-extract_model <- function(model, which_model=NULL, hide_warnings=FALSE){
+extract_magicmap_model <- function(model, which_model=NULL, hide_warnings=FALSE){
   
   if(class(model) == "magicmap_single"){
     if(!hide_warnings){
@@ -86,7 +82,7 @@ extract_model <- function(model, which_model=NULL, hide_warnings=FALSE){
     stop("model must be a magicmap results object")
   }
   
-  if(k in colnames(model$fit_stats)){
+  if("k" %in% colnames(model$fit_stats)){
     colnames(model$fit_stats)[colnames(model$fit_stats)=="k"] <- "k_components"
   }
   
@@ -122,7 +118,7 @@ extract_model <- function(model, which_model=NULL, hide_warnings=FALSE){
     
   }
   
-  if(!("scoutjoy_test" %in% names(model)){
+  if(!("scoutjoy_test" %in% names(model))){
     if(!hide_warnings){
       warning("scoutjoy_test is missing; results likely old or from an internal function?")
     }
@@ -140,10 +136,10 @@ extract_model <- function(model, which_model=NULL, hide_warnings=FALSE){
     
   if(paste0("mix",k,"components") %in% names(model$posteriors)){
     
-    if("call" in names(model)){
+    if("call" %in% names(model)){
       out <- list(
         scoutjoy_test = scoutjoy_test,
-        fit_stats = model$fit_stats,
+        fit_stats = model$fit_stats[model$fit_stats$k_components==k,],
         component_proportions = model$component_proportions[[paste0("mix",k,"components")]],
         slopes = model$slopes[[paste0("mix",k,"components")]],
         predicted_target_betas = model$predicted_target_betas[[paste0("mix",k,"components")]],
@@ -157,7 +153,7 @@ extract_model <- function(model, which_model=NULL, hide_warnings=FALSE){
       }
       out <- list(
         scoutjoy_test = scoutjoy_test,
-        fit_stats = model$fit_stats,
+        fit_stats = model$fit_stats[model$fit_stats$k_components==k,],
         component_proportions = model$component_proportions[[paste0("mix",k,"components")]],
         slopes = model$slopes[[paste0("mix",k,"components")]],
         predicted_target_betas = model$predicted_target_betas[[paste0("mix",k,"components")]],
@@ -180,4 +176,3 @@ extract_model <- function(model, which_model=NULL, hide_warnings=FALSE){
   return(out)
   
 }
-    

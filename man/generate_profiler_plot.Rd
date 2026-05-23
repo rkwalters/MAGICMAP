@@ -4,7 +4,7 @@
 \alias{generate_profiler_plot}
 \title{Generate MAGICMAP Diagnostic Profiler Plot}
 \usage{
-generate_profiler_plot(model, prefix)
+generate_profiler_plot(model, prefix, gene_label = TRUE)
 }
 \arguments{
 \item{model}{The fitted MAGICMAP model object}

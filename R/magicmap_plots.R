@@ -20,11 +20,11 @@
 #' Basic Scatter Plot of MAGICMAP results
 #' 
 #' @description
-#' A scatter plot showing the regression mixture components fitted to the two sets of the effect size estimates by a MAGICMAP model.
+#' Makes a scatter plot showing the regression mixture components fitted to the two sets effect size estimates by a MAGICMAP model.
 #' 
 #' 
 #' @param model
-#' output of \code{\link{magicmap}}()
+#' output of \code{\link{magicmap}()}
 #' 
 #' @param which_model
 #' numeric, which model to plot (when multiple models were fit). Default is the model with lowest BIC.
@@ -51,7 +51,7 @@
 #' list of names to use for mixture components (only affects legend)
 #' 
 #' @param se_length
-#' length for caps on SE intervals; passed to \code{\link[graphics]{arrows}}()
+#' length for caps on SE intervals; passed to \code{\link[graphics]{arrows}()}
 #' 
 #' @param conf_region
 #' Logical, whether to include 95\% confidence bands for slopes based on their SEs 
@@ -69,18 +69,16 @@
 #' Logical, whether to skip printing warnings (highly discouraged)
 #'
 #' @param ...
-#' additional parameters to be passed directly to \code{\link[base]{plot}}()
-#'
+#' additional parameters to be passed directly to \code{\link[base]{plot}()}
 #'
 #' @export plot.magicmap
-#' @export plot.magicmap_single
 #' @export
 #'
 
 plot.magicmap <- function(model, which_model=NULL, class_thresh=0.95, label_comp=NULL, colors=NULL, se_bars=TRUE, se_color="gray70", legend=TRUE, comp_names=NULL, se_length=0.025, conf_region=TRUE, assigned_cex=1, unassigned_cex=1, label_cex=0.8, hide_warnings=FALSE, ...){  
   args <- list(...)
   
-  selected_model <- extract_model(model, which_model=which_model, hide_warnings=hide_warnings)
+  selected_model <- extract_magicmap_model(model, which_model=which_model, hide_warnings=hide_warnings)
   
   x <- selected_model$posteriors[,1]
   y <- selected_model$posteriors[,3]
@@ -304,6 +302,9 @@ plot.magicmap <- function(model, which_model=NULL, class_thresh=0.95, label_comp
   
 }
 
+#' @rdname plot.magicmap
+#' @export
+plot.magicmap_single <- plot.magicmap
 
 
 
@@ -353,6 +354,12 @@ plot.magicmap <- function(model, which_model=NULL, class_thresh=0.95, label_comp
 #' 
 #' @param cex_forest_labels
 #' size scaling for text in forest plot/table
+#' 
+#' @param layout_widths
+#' relative widths for the columns of the plot when plotting "all" panels or "foresttable" (forest plot+table). Default = c(3,2).
+#' 
+#' @param layout_heights
+#' relative heights for the rows of the plot when plotting "all" panels or "histforest" (histogram+forest plot). Default = c(1,3).
 #' 
 #' @param n_mc
 #' number of monte carlo replicates to simulate to estimate the distribution of effect size ratios
@@ -412,7 +419,7 @@ ratio_figure <- function(model, target_name=NULL, comparator_name=NULL, panels="
   # get info about model to plot
   ###
   
-  selected_model <- extract_model(model, which_model=which_model, hide_warnings=FALSE)
+  selected_model <- extract_magicmap_model(model, which_model=which_model, hide_warnings=FALSE)
 
   if(is.null(target_name)){
     target_name <- colnames(model$posteriors)[1]

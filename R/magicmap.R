@@ -412,7 +412,7 @@ magicmap_1k <- function(data, re, k, estimator="MLE", maxIterations=1000, EMTole
 #'   }
 #'
 #'   \item{\code{call}}{
-#'     Call object containing all arguments used 
+#'     \code{\link[base]{call}} object containing all arguments used 
 #'   }
 #'   
 #' }
